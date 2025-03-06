@@ -66,6 +66,10 @@ flutter:
   assets:
     - assets/images/game/
     - assets/images/game/background/
+    - assets/audio/die.wav
+    - assets/audio/flap.wav
+    - assets/audio/hit.wav
+    - assets/audio/score.wav
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

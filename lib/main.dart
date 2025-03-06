@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_flame_project/game/flappy_dash_bird.dart';
 import 'package:my_flame_project/game/util/color_schemes.dart';
 import 'package:my_flame_project/game/util/string_utils.dart';
-
 import 'game/overlays/overlay_factory.dart';
 
 void main() {
@@ -19,12 +18,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: appName,
       themeMode: ThemeMode.dark,
-      theme: ThemeData(
-        colorScheme: lightColorScheme,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(colorScheme: lightColorScheme, useMaterial3: true),
       darkTheme: ThemeData(
         colorScheme: darkColorScheme,
         textTheme: GoogleFonts.audiowideTextTheme(ThemeData.dark().textTheme),
@@ -43,22 +40,28 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Game? _game; // Game instance
-  int _highScore = 0; // High score
+  Game? _game;
+  int _highScore = 0;
 
   @override
   void initState() {
     super.initState();
     _loadHighScore();
-    FlameAudio.bgm.initialize(); // Initialize audio
+    FlameAudio.bgm.initialize();
 
-    // Ensures _showStartGameDialog() runs after build
+    // Preload all game sounds
+    FlameAudio.audioCache.loadAll([
+      'start_game.mp3',
+      'die.wav',
+      'score.wav',
+      'flap.wav',
+    ]);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showStartGameDialog();
     });
   }
 
-  // Load high score from shared preferences
   Future<void> _loadHighScore() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -66,56 +69,38 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  // Save high score to shared preferences
-  Future<void> _saveHighScore(int score) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (score > _highScore) {
-      await prefs.setInt('high_score', score);
-      setState(() {
-        _highScore = score;
-      });
-    }
-  }
-
   void _showStartGameDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent closing by tapping outside
+      barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          title: Text(
-            "Flappy Bird Game",
-            style: GoogleFonts.audiowide(
-                fontSize: 24, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
+          title: Text("Flappy Bird Game",
+              style: GoogleFonts.audiowide(
+                  fontSize: 20, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                "By: Ayaz Aslam",
-                style: GoogleFonts.audiowide(
-                    fontSize: 16, fontWeight: FontWeight.w500),
-                textAlign: TextAlign.center,
-              ),
+              Text("By: Ayaz Aslam",
+                  style: GoogleFonts.audiowide(
+                      fontSize: 13, fontWeight: FontWeight.w500),
+                  textAlign: TextAlign.center),
               const SizedBox(height: 10),
-              Text(
-                "High Score: $_highScore",
-                style: GoogleFonts.audiowide(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange),
-                textAlign: TextAlign.center,
-              ),
+              Text("High Score: $_highScore",
+                  style: GoogleFonts.audiowide(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange),
+                  textAlign: TextAlign.center),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context).pop(); // Close the dialog
-                  _startGame(); // Start the game
+                  Navigator.of(context).pop();
+                  _startGame();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.secondary,
@@ -124,11 +109,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
-                child: Text(
-                  "Start Game",
-                  style:
-                      GoogleFonts.audiowide(fontSize: 18, color: Colors.white),
-                ),
+                child: Text("Start Game",
+                    style: GoogleFonts.audiowide(
+                        fontSize: 18, color: Colors.white)),
               ),
             ],
           ),
@@ -139,11 +122,25 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _startGame() {
     setState(() {
-      _game = FlappyDashBird();
+      _game = FlappyDashBird(
+        onGameOver: (int score) {
+          FlameAudio.play('die.wav');
+        },
+        onScore: () {
+          FlameAudio.play('score.wav');
+        },
+        onStartGame: () {
+          FlameAudio.play('flap.wav');
+        },
+      );
     });
 
-    // Play start game sound
-    FlameAudio.play('start_game.mp3');
+    // Load and play sound safely
+    FlameAudio.audioCache.load('start_game.mp3').then((_) {
+      FlameAudio.play('start_game.mp3');
+    }).catchError((e) {
+      debugPrint("Error loading sound: $e");
+    });
   }
 
   @override
@@ -153,12 +150,9 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         child: LayoutBuilder(builder: (context, constraints) {
           return Container(
-            constraints: const BoxConstraints(
-              maxWidth: 800,
-              minWidth: 550,
-            ),
+            constraints: const BoxConstraints(maxWidth: 800, minWidth: 550),
             child: _game == null
-                ? const SizedBox() // Show nothing before starting
+                ? const SizedBox()
                 : GameWidget(
                     game: _game!,
                     overlayBuilderMap: OverlayFactory().supportedOverlays,

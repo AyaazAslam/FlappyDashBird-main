@@ -15,7 +15,7 @@ class Player extends SpriteGroupComponent<PlayerState>
     with HasGameRef<FlappyDashBird>, KeyboardHandler, CollisionCallbacks {
   Player({
     super.position,
-    double flyingSpeed = 350,
+    double flyingSpeed = 200,
   })  : _flyingSpeed = flyingSpeed,
         _velocity = Vector2.zero(),
         _gravity = 9,

@@ -9,20 +9,22 @@ import 'package:my_flame_project/sprites/player/player.dart';
 
 class FlappyDashBird extends FlameGame
     with HasKeyboardHandlerComponents, HasCollisionDetection {
-  FlappyDashBird({super.children})
+
+  FlappyDashBird({required this.onGameOver, required this.onScore,required this.onStartGame})
       : gameManager = GameManager(),
         _levelManager = LevelManager(),
         _world = World(),
         player = Player(),
         screenBufferSpace = 300;
 
+  final void Function(int score) onGameOver;
+  final void Function() onScore;
+  final void Function() onStartGame;
+
   final GameManager gameManager;
   final LevelManager _levelManager;
-
   final World _world;
-
   final Player player;
-
   late ObjectManager _objectManager;
 
   int screenBufferSpace;
@@ -36,7 +38,6 @@ class FlappyDashBird extends FlameGame
 
     await add(gameManager);
     await add(_levelManager);
-
     await add(player);
 
     overlays.add(OverlayFactory.gameOverlay);
@@ -54,11 +55,7 @@ class FlappyDashBird extends FlameGame
   }
 
   void togglePauseState() {
-    if (paused) {
-      resumeEngine();
-    } else {
-      pauseEngine();
-    }
+    paused ? resumeEngine() : pauseEngine();
   }
 
   void initializeGameStart() {
@@ -84,6 +81,9 @@ class FlappyDashBird extends FlameGame
     _objectManager.removeFromParent();
 
     overlays.add(OverlayFactory.gameOverOverlay);
+
+    // Call the game-over callback
+    onGameOver(gameManager.score.value);
   }
 
   void resetGame() {
@@ -94,7 +94,6 @@ class FlappyDashBird extends FlameGame
   void increaseDifficulty() {
     if (_levelManager.shouldLevelUp(gameManager.score.value)) {
       _levelManager.increasePipesSpeed(gameManager.score.value);
-
       _objectManager.pipesSpeed = _levelManager.pipesSpeed;
     }
   }
